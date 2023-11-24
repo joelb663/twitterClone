@@ -23,7 +23,6 @@ const UserProfileSchema = new mongoose.Schema(
         },
         profilePicturePath: {
             type: String,
-            default: "",
         },
         followers: {
             type: Array,

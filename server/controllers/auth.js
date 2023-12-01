@@ -39,7 +39,7 @@ export const register = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-}
+};
 
 /* Custom register UserAccount and UserProfile */
 export const register2 = async (req, res) => {
@@ -79,7 +79,7 @@ export const register2 = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-}
+};
 
 /* LOGGING IN */
 export const login = async (req, res) => {
@@ -97,7 +97,7 @@ export const login = async (req, res) => {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  };
+};
 
 /* custom login user */
 export const login2 = async (req, res) => {
@@ -115,6 +115,4 @@ export const login2 = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-  };
-
-
+};

@@ -42,7 +42,7 @@ const postSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    location: {
+    tag: {
       type: String,
     },
     description: {
@@ -57,11 +57,15 @@ const postSchema = mongoose.Schema(
       type: Map,
       of: Boolean,
     },
-    comments: {
+    replies: {
       type: Array,
       default: [],
     },
     profilePicturePath: {
+      type: String,
+      default: "",
+    },
+    replyingTo: {
       type: String,
       default: "",
     },

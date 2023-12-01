@@ -7,6 +7,7 @@ export const getUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
+    
     res.status(200).json(user);
   } catch (err) {
     res.status(404).json({ message: err.message });
@@ -70,6 +71,7 @@ export const addRemoveFriend = async (req, res) => {
     try {
       const { id } = req.params;
       const user = await UserProfile.findById(id);
+
       res.status(200).json(user);
     } catch (err) {
       res.status(404).json({ message: err.message });
@@ -90,7 +92,6 @@ export const addRemoveFriend = async (req, res) => {
         }
       );
       res.status(200).json(formattedFollowers);
-      
     } catch (err) {
       res.status(404).json({ message: err.message });
     }
@@ -129,7 +130,7 @@ export const getUsersBySearch = async (req, res) => {
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
-}
+};
 
 export const getUsersToFollow = async (req, res) => {
   try {
@@ -177,7 +178,7 @@ export const getUsersYouMightLike = async (req,res) => {
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
-}
+};
 
 /* UPDATE */
 export const followUnfollowUser = async (req, res) => {
@@ -221,6 +222,7 @@ export const updateUser = async (req, res) => {
       birthDate,
       bio,
       profilePicturePath,
+      location
     } = req.body;
 
     user.name = name;
@@ -228,15 +230,14 @@ export const updateUser = async (req, res) => {
     user.birthDate = birthDate;
     user.bio = bio;
     user.profilePicturePath = profilePicturePath;
-    user.save();
+    user.location = location;
+    await user.save();
 
     res.status(200).json(user);
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
 };
-
-// works in most cases need more testing
 
 export const deleteUser = async (req, res) => {
   try {
@@ -249,7 +250,7 @@ export const deleteUser = async (req, res) => {
       const index = user.following.indexOf(id);
       if (index > -1)
         user.following.splice(index, 1);
-      user.save();
+      await user.save();
     }
     async function filterFollowers(value){
       const user = await UserProfile.findById(value);
@@ -257,7 +258,7 @@ export const deleteUser = async (req, res) => {
       const index = user.followers.indexOf(id);
       if (index > -1)
         user.followers.splice(index, 1);
-      user.save();
+      await user.save();
     }
 
     await Promise.all(

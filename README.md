@@ -1,5 +1,9 @@
 # twitterClone
 
+## link to demo video
+
+https://drive.google.com/file/d/1O1jI3j6KkoyG7cXPO4ggfnpBn8br3rhR/view?usp=drive_link
+
 ## To start frontend client
 
 In the client directory, you can run:

@@ -3,42 +3,37 @@ import {
     getFeedPosts, 
     getUserPosts,
     createPost,
-    getPostsByTag,
     likeUnlikePost,
-    getPostsByUsersFollowing,
     updatePost,
     deletePost,
-    createReply
+    createReply,
+    getPostsLikedByUser,
+    getRepliesByUser
 } from "../controllers/posts.js";
 import { verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
 /* READ */
-//router.get("/", verifyToken, getFeedPosts);
-router.get("/", getFeedPosts);
+router.get("/", verifyToken, getFeedPosts);
 
-//router.get("/:userId/posts", verifyToken, getUserPosts);
-router.get("/:userId/posts", getUserPosts);
+router.get("/:userId/posts", verifyToken, getUserPosts);
 
-router.get("/:tag/postsByTag", getPostsByTag);
+router.get("/:userId/postsByLikes", verifyToken, getPostsLikedByUser);
 
-router.get("/:userId/postsByUsersFollowing", getPostsByUsersFollowing);
+router.get("/:userId/replies", verifyToken, getRepliesByUser);
 
 /* CREATE */
-router.post("/createPost", createPost);
+router.post("/createPost", verifyToken, createPost);
 
-router.post("/:id/reply", createReply)
+router.post("/:id/reply", verifyToken, createReply)
 
 /* UPDATE */
-//router.patch("/:id/like", verifyToken, likePost);
-//router.patch("/:id/like", likePost);
+router.patch("/:id/like", verifyToken, likeUnlikePost);
 
-router.patch("/:id/like", likeUnlikePost);
-
-router.patch("/:id/updatePost", updatePost);
+router.patch("/:id/updatePost", verifyToken, updatePost);
 
 /* DELETE */
-router.delete("/:id/deletePost", deletePost);
+router.delete("/:id/deletePost", verifyToken, deletePost);
 
 export default router;

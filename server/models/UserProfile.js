@@ -12,7 +12,7 @@ const UserProfileSchema = new mongoose.Schema(
             enum: ["male", "female"]
         },
         birthDate: {
-            type: Date,
+            type: String,
         },
         bio: {
             type: String,

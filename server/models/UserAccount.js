@@ -15,6 +15,11 @@ const UserAccountSchema = new mongoose.Schema(
             min: 8,
             max: 20,
         },
+        userId: {
+            type: String,
+            unique: true,
+            required: false,
+        },
     },
     { timestamps: true }
 );

@@ -1,91 +1,127 @@
 import Post from "../models/Post.js";
-import User from "../models/User.js";
 import UserProfile from "../models/UserProfile.js";
 
 /* CREATE */
-/*
-export const createPost = async (req, res) => {
-  try {
-    const { userId, description, picturePath } = req.body;
-    const user = await User.findById(userId);
-    const newPost = new Post({
-      userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      location: user.location,
-      description,
-      userPicturePath: user.picturePath,
-      picturePath,
-      likes: {},
-      comments: [],
-    });
-    await newPost.save();
 
-    const post = await Post.find();
-    res.status(201).json(post);
-  } catch (err) {
-    res.status(409).json({ message: err.message });
-  }
-};
-*/
-
+// Function to create a new post
 export const createPost = async (req, res) => {
   try {
     const {
       userId,
-      tag,
       description,
       postPicturePath,
     } = req.body;
 
-    if (!description && !postPicturePath)
-      throw new Error('ERROR: description and postPicturePath cannot be null');
+    // Throw an error if both description and postPicturePath are missing
+    if (!description && !postPicturePath) {
+      throw new Error('Description and postPicturePath cannot be null');
+    }
 
+    // Find the user by userId
     const user = await UserProfile.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
 
+    // Create a new post
     const newPost = new Post({
       userId,
       name: user.name,
-      tag: tag,
-      description: description,
-      postPicturePath: postPicturePath,
+      description,
+      postPicturePath,
       likes: {},
       replies: [],
-      profilePicturePath: user.profilePicturePath
+      profilePicturePath: user.profilePicturePath,
+      createdAt: new Date(),
     });
+
+    // Save the new post and add it to the user's posts
     await newPost.save();
     user.posts.push(newPost.id);
     await user.save();
 
+    // Fetch all posts for the feed, excluding replies
     let feed = await Post.find();
     feed = feed.filter(function (post) {
-      if (!post.replyingTo)
+      if (!post.parentPostId)
         return post
     });
-  
+
+    // Sort the feed by creation date in descending order
     feed.sort((a, b) => b.createdAt - a.createdAt);
-    res.status(201).json(feed);
+
+    res.status(200).json(feed);
   } catch (err) {
+    console.error(err);
     res.status(409).json({ message: err.message });
   }
 };
 
-/* READ */
+// Function to create a reply to a post
+export const createReply = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      userId,
+      description,
+      postPicturePath,
+      replyingTo
+    } = req.body;
+
+    // Throw an error if both description and postPicturePath are missing
+    if (!description && !postPicturePath)
+      throw new Error('ERROR: description and postPicturePath cannot be null');
+
+    // Find the post being replied to and the user creating the reply
+    const post = await Post.findById(id);
+    const user = await UserProfile.findById(userId);
+
+    // Create a new reply post
+    const newPost = new Post({
+      userId,
+      name: user.name,
+      description: description,
+      postPicturePath: postPicturePath,
+      likes: {},
+      replies: [],
+      profilePicturePath: user.profilePicturePath,
+      parentPostId: id,
+      replyingTo: replyingTo
+    });
+    await newPost.save();
+
+    // Add the new reply to the original post's replies and the user's replies
+    post.replies.push(newPost);
+    user.replies.push(newPost.id);
+
+    await post.save();
+    await user.save();
+    
+    res.status(201).json(newPost);
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+};
+
+// Function to get all posts for the feed
 export const getFeedPosts = async (req, res) => {
   try {
     let feed = await Post.find();
     feed = feed.filter(function (post) {
-      if (!post.replyingTo)
+      if (!post.parentPostId)
         return post
     });
 
+    // Sort the feed by creation date in descending order
     feed.sort((a, b) => b.createdAt - a.createdAt);
+
     res.status(200).json(feed);
   } catch (err){
     res.status(404).json({ message: err.message });
   }
 };
 
+// Function to get posts by a specific user
 export const getUserPosts = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -94,92 +130,63 @@ export const getUserPosts = async (req, res) => {
     let posts = await Promise.all(
       user.posts.map((id) => Post.findById(id))
     );
+
+    // Filter out replies
     posts = posts.filter(function (post) {
-      if (!post.replyingTo)
+      if (!post.parentPostId)
         return post
     });
 
+    // Sort the posts by creation date in descending order
     posts.sort((a, b) => b.createdAt - a.createdAt);
+
     res.status(200).json(posts);
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
 };
 
-export const getPostsByTag = async (req, res) => {
-  try {
-    const { tag } = req.params;
-
-    let posts = await Post.find({tag: {$regex: new RegExp(`^${tag}$`, 'i' )}});
-    posts = posts.filter(function (post) {
-      if (!post.replyingTo)
-        return post
-    });
-
-    posts.sort((a, b) => b.createdAt - a.createdAt);
-    res.status(200).json(posts);
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-};
-
-export const getPostsByUsersFollowing = async (req, res) => {
+// Function to get posts liked by a user
+export const getPostsLikedByUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await UserProfile.findById(userId);
 
-    const following = await Promise.all(
-      user.following.map((id) => UserProfile.findById(id))
+    let likedPosts = await Promise.all(
+      user.likes.map((id) => Post.findById(id))
     );
 
-    let postIDs = [];
-    following.forEach((user) => {
-      postIDs = postIDs.concat(user.posts);
-    });
+    // Sort the liked posts by creation date in descending order
+    likedPosts.sort((a, b) => b.createdAt - a.createdAt);
+    
+    res.status(200).json(likedPosts);
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+};
 
-    let posts = await Promise.all(
-      postIDs.map((id) => Post.findById(id))
+// Function to get replies made by a user
+export const getRepliesByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await UserProfile.findById(userId);
+
+    let replies = await Promise.all(
+      user.replies.map((id) => Post.findById(id))
     );
-    posts = posts.filter(function (post) {
-      if (!post.replyingTo)
-        return post
-    });
 
-    posts.sort((a, b) => b.createdAt - a.createdAt);
-    res.status(200).json(posts);
+    // Sort the replies by creation date in descending order
+    replies.sort((a, b) => b.createdAt - a.createdAt);
+
+    res.status(200).json(replies);
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
 };
 
 /* UPDATE */
-/*
-export const likePost = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.body;
-    const post = await Post.findById(id);
-    const isLiked = post.likes.get(userId);
 
-    if (isLiked) {
-      post.likes.delete(userId);
-    } else {
-      post.likes.set(userId, true);
-    }
-
-    const updatedPost = await Post.findByIdAndUpdate(
-      id,
-      { likes: post.likes },
-      { new: true }
-    );
-
-    res.status(200).json(updatedPost);
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-};
-*/
-
+// Function to like or unlike a post
 export const likeUnlikePost = async (req, res) =>{
   try {
     const { id } = req.params;
@@ -190,11 +197,13 @@ export const likeUnlikePost = async (req, res) =>{
     const user = await UserProfile.findById(userId);
 
     if (isLiked) {
+      // If the post is liked, unlike it
       post.likes.delete(userId);
       const index = user.likes.indexOf(id);
       if (index > -1)
         user.likes.splice(index, 1);
     } else {
+      // If the post is not liked, like it
       post.likes.set(userId, true);
       user.likes.push(id);
     }
@@ -212,6 +221,7 @@ export const likeUnlikePost = async (req, res) =>{
   }
 };
 
+// Function to update a post
 export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -222,9 +232,11 @@ export const updatePost = async (req, res) => {
       postPicturePath,
     } = req.body;
 
+    // Throw an error if both description and postPicturePath are missing
     if (!description && !postPicturePath)
       throw new Error('ERROR: description and postPicturePath cannot be null');
 
+    // Allow post updates only within an hour of creation
     const currentDate = new Date();
     const difference = currentDate - post.createdAt;
     if (difference > 3600000)
@@ -240,99 +252,45 @@ export const updatePost = async (req, res) => {
   }
 };
 
+/* DELETE */
+
+// Function to delete a post
 export const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
 
-    // this code grabs the users that liked the post and deletes the postId from their likes array
-    const userIdsWhoLiked = Array.from(post.likes.keys());
-    const usersWhoLiked = await Promise.all(
-      userIdsWhoLiked.map((id) => UserProfile.findById(id))
+    // Remove the post from the likes array of all users who liked the post
+    await UserProfile.updateMany(
+      { _id: { $in: Array.from(post.likes.keys()) } },
+      { $pull: { likes: id } }
     );
 
-    usersWhoLiked.forEach((user) => {
-      const index = user.likes.indexOf(id);
-      if (index > -1)
-        user.likes.splice(index, 1);
-      user.save();
-    });
-    
-    // this code deletes the replying post and updates the users replies array
-    async function filterReplies(value){
-      const post = await Post.findById(value);
-      const user = await UserProfile.findById(post.userId);
-      await Post.findByIdAndDelete(post.id);
+    // Remove the post from the replies array of all posts that have it
+    await UserProfile.updateMany(
+      { _id: { $in: post.replies } },
+      { $pull: { replies: id } }
+    );
 
-      const index = user.replies.indexOf(post.id);
-      if (index > -1)
-        user.replies.splice(index, 1);
-      await user.save();
+    // Remove the post from the user's posts and replies array
+    await UserProfile.findByIdAndUpdate(post.userId, {
+      $pull: { posts: id },
+    });
+
+    await UserProfile.findByIdAndUpdate(post.userId, {
+      $pull: { replies: id },
+    });
+
+    // If the post is a reply, remove it from the parent post's replies
+    if (post.parentPostId) {
+      await Post.findByIdAndUpdate(post.parentPostId, {
+        $pull: { replies: id },
+      });
     }
 
-    await Promise.all(
-      post.replies.map( async (postId) => {
-        await filterReplies(postId)
-      })
-    );
-
-    // this code deletes the postId from the users post array
-    const user = await UserProfile.findById(post.userId);
-    const index = user.posts.indexOf(id);
-    if (index > -1)
-      user.posts.splice(index, 1);
-    user.save();
-    
     const postDeleted = await Post.findByIdAndDelete(id);
+
     res.status(200).json(postDeleted);
-  } catch (err) {
-    res.status(404).json({ message: err.message });
-  }
-};
-
-export const createReply = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      userId,
-      tag,
-      description,
-      postPicturePath,
-    } = req.body;
-
-    if (!description && !postPicturePath)
-      throw new Error('ERROR: description and postPicturePath cannot be null');
-
-    const post = await Post.findById(id);
-    const user = await UserProfile.findById(userId);
-
-    const newPost = new Post({
-      userId,
-      name: user.name,
-      tag: tag,
-      description: description,
-      postPicturePath: postPicturePath,
-      likes: {},
-      replies: [],
-      profilePicturePath: user.profilePicturePath,
-      replyingTo: id
-    });
-    await newPost.save();
-
-    post.replies.push(newPost.id);
-    user.replies.push(newPost.id);
-
-    await post.save();
-    await user.save();
-    
-    let feed = await Post.find();
-    feed = feed.filter(function (post) {
-      if (!post.replyingTo)
-        return post
-    });
-
-    feed.sort((a, b) => b.createdAt - a.createdAt);
-    res.status(201).json(feed);
   } catch (err) {
     res.status(404).json({ message: err.message });
   }

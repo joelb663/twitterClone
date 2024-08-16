@@ -1,9 +1,5 @@
 import express from "express";
 import {
-  getUser,
-  getUserFriends,
-  addRemoveFriend,
-
   getUserProfile,
   getFollowers,
   getFollowing,
@@ -12,34 +8,27 @@ import {
   getUsersYouMightLike,
   followUnfollowUser,
   updateUser,
-  deleteUser,
 } from "../controllers/users.js";
 import { verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
 /* READ */
-//router.get("/:id", verifyToken, getUser);
-//router.get("/:id", getUser);
-router.get("/:id", getUserProfile);
+router.get("/:id", verifyToken, getUserProfile);
 
-//router.get("/:id/friends", verifyToken, getUserFriends);
-router.get("/:id/followers", getFollowers);
-router.get("/:id/following", getFollowing);
+router.get("/:id/followers", verifyToken, getFollowers);
 
-router.post("/search", getUsersBySearch);
+router.get("/:id/following", verifyToken, getFollowing);
 
-router.get("/:id/usersToFollow", getUsersToFollow);
-router.get("/:id/:userId/usersYouMightLike", getUsersYouMightLike);
+router.post("/search", verifyToken, getUsersBySearch);
 
-/* DELETE */
-router.delete("/:id/deleteUser", deleteUser);
+router.get("/:id/usersToFollow", verifyToken, getUsersToFollow);
+
+router.get("/:id/usersYouMightLike", verifyToken, getUsersYouMightLike);
 
 /* UPDATE */
-//router.patch("/:id/:friendId", verifyToken, addRemoveFriend);
-//router.patch("/:id/:friendId", addRemoveFriend);
+router.patch("/:id/updateUser", verifyToken, updateUser);
 
-router.patch("/:id/updateUser", updateUser);
-router.patch("/:id/:userId", followUnfollowUser);
+router.patch("/:id/:userId", verifyToken, followUnfollowUser);
 
 export default router;
